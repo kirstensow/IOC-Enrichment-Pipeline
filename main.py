@@ -1,8 +1,8 @@
 from dotenv import load_dotenv
 import os
 import requests
-import json
 import time
+import csv
 
 load_dotenv()
 vt_key = os.getenv('VT_API_KEY')
@@ -17,6 +17,19 @@ def risk_score(malicious, abuse_confidence_score):
 	else:
 		return 'LOW'
 
+
+def export(results):
+	with open('results.csv', 'w', newline='') as file:
+		writer = csv.writer(file)
+
+		# Write header row
+		writer.writerow(['IP', 'VT Malicious', 'VT Total', 'Abuse Score', 'Country', 'Owner', 'Risk Rating'])
+
+		# Write each result as a row
+		for row in results:
+			writer.writerow(row)
+
+results = []
 ioc_list = ['8.8.8.8', '1.1.1.1', '185.220.101.1 ']
 
 for test_ip in ioc_list:
@@ -45,11 +58,13 @@ for test_ip in ioc_list:
 		print(f'Malicious detections: {malicious}/{total}')
 		print(f'Suspicious detections: {suspicious}/{total}')
 
-		country = datacountry = data['data']['attributes'].get('country', 'Unknown')
+		country = data['data']['attributes'].get('country', 'Unknown')
 		print(country)
 
 		as_owner = data['data']['attributes'].get('as_owner', 'Unknown')
 		print(as_owner)
+
+
 
 	else:
 		print(f'VT lookup failed for {test_ip}: {response.status_code}')
@@ -71,6 +86,9 @@ for test_ip in ioc_list:
 	else:
 		print(f'AbuseOPDB lookup failed for {test_ip}: {abuse_response.status_code}')
 
+	risk = risk_score(malicious, abuse_confidence_score)
+	print(f'Risk Rating: {risk}')
+	results.append([test_ip, malicious, total, abuse_confidence_score, country, as_owner, risk])
 	time.sleep(15)
 
 
@@ -78,6 +96,7 @@ for test_ip in ioc_list:
 
 
 
-	risk = risk_score (malicious, abuse_confidence_score)
-	print(f'Risk Rating: {risk}')
+
+
+export (results)
 
