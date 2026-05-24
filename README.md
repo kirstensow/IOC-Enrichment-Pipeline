@@ -1,4 +1,4 @@
-# IOC - Enrichment- Pipeline
+# IOC Enrichment Pipeline
 
 A Python tool that reads CSV files containing IOCs and queries them against VirusTotal and AbuseIPDB to extract threat intelligence, assign risk ratings. 
 Enriched results are exported to a CSV file.
