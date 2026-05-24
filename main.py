@@ -30,66 +30,70 @@ def export(results):
 			writer.writerow(row)
 
 results = []
-ioc_list = ['8.8.8.8', '1.1.1.1', '185.220.101.1 ']
 
-for test_ip in ioc_list:
-	# VirusTotal API call
-	url = f'https://www.virustotal.com/api/v3/ip_addresses/{test_ip}'
-	headers = {'x-apikey': vt_key}
+with open ('iocs.csv', 'r' , newline='') as file:
+	reader = csv.reader(file)
+	next(reader)
+	for row in reader:
+		test_ip = row[0]
 
-	#AbuseIPDB API call
-	abuse_url = f'https://api.abuseipdb.com/api/v2/check'
-	abuse_headers  = {'Key': abuseipdb_key, 'Accept': 'application/json'}
+		# VirusTotal API call
+		url = f'https://www.virustotal.com/api/v3/ip_addresses/{test_ip}'
+		headers = {'x-apikey': vt_key}
 
-	params = {'ipAddress': test_ip, 'maxAgeInDays': 90}
+		#AbuseIPDB API call
+		abuse_url = f'https://api.abuseipdb.com/api/v2/check'
+		abuse_headers  = {'Key': abuseipdb_key, 'Accept': 'application/json'}
 
-	#VT Response
-	response = requests.get(url, headers=headers)
-	print(f'IOC:  {test_ip}')
-	if response.status_code == 200:
-		data = response.json()
-		stats = data['data']['attributes']['last_analysis_stats']
-		malicious = stats['malicious']
-		suspicious = stats['suspicious']
-		total = sum(stats.values())
+		params = {'ipAddress': test_ip, 'maxAgeInDays': 90}
 
-
-
-		print(f'Malicious detections: {malicious}/{total}')
-		print(f'Suspicious detections: {suspicious}/{total}')
-
-		country = data['data']['attributes'].get('country', 'Unknown')
-		print(country)
-
-		as_owner = data['data']['attributes'].get('as_owner', 'Unknown')
-		print(as_owner)
+		#VT Response
+		response = requests.get(url, headers=headers)
+		print(f'IOC:  {test_ip}')
+		if response.status_code == 200:
+			data = response.json()
+			stats = data['data']['attributes']['last_analysis_stats']
+			malicious = stats['malicious']
+			suspicious = stats['suspicious']
+			total = sum(stats.values())
 
 
 
-	else:
-		print(f'VT lookup failed for {test_ip}: {response.status_code}')
+			print(f'Malicious detections: {malicious}/{total}')
+			print(f'Suspicious detections: {suspicious}/{total}')
+
+			country = data['data']['attributes'].get('country', 'Unknown')
+			print(country)
+
+			as_owner = data['data']['attributes'].get('as_owner', 'Unknown')
+			print(as_owner)
 
 
-	#AbuseIPDB Response
-	abuse_response = requests.get(url= abuse_url, headers=abuse_headers, params=params)
-	if abuse_response.status_code == 200:
-		abuse_data = abuse_response.json()
-		abuse_confidence_score = abuse_data['data']['abuseConfidenceScore']
-		print('Abuse Confidence Score: ', abuse_confidence_score)
 
-		total_reports = abuse_data['data']['totalReports']
-		print('Total Reports: ', total_reports)
+		else:
+			print(f'VT lookup failed for {test_ip}: {response.status_code}')
 
-		country_code = abuse_data['data']['countryCode']
-		print('Country Code: ', country_code)
 
-	else:
-		print(f'AbuseOPDB lookup failed for {test_ip}: {abuse_response.status_code}')
+		#AbuseIPDB Response
+		abuse_response = requests.get(url= abuse_url, headers=abuse_headers, params=params)
+		if abuse_response.status_code == 200:
+			abuse_data = abuse_response.json()
+			abuse_confidence_score = abuse_data['data']['abuseConfidenceScore']
+			print('Abuse Confidence Score: ', abuse_confidence_score)
 
-	risk = risk_score(malicious, abuse_confidence_score)
-	print(f'Risk Rating: {risk}')
-	results.append([test_ip, malicious, total, abuse_confidence_score, country, as_owner, risk])
-	time.sleep(15)
+			total_reports = abuse_data['data']['totalReports']
+			print('Total Reports: ', total_reports)
+
+			country_code = abuse_data['data']['countryCode']
+			print('Country Code: ', country_code)
+
+		else:
+			print(f'AbuseOPDB lookup failed for {test_ip}: {abuse_response.status_code}')
+
+		risk = risk_score(malicious, abuse_confidence_score)
+		print(f'Risk Rating: {risk}')
+		results.append([test_ip, malicious, total, abuse_confidence_score, country, as_owner, risk])
+		time.sleep(15)
 
 
 
