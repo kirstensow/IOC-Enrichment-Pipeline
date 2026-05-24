@@ -16,12 +16,24 @@ Enriched results are exported to a CSV file.
 
 
 ## How to Use
-1. Place your IOCs in 'iocs.csv' file
-2. Run the script:
+
+## Setup
+1. Sign up for free API keys:
+   - VirusTotal: https://www.virustotal.com
+   - AbuseIPDB: https://www.abuseipdb.com
+
+2. Create a `.env` file in the project folder:
+    VT_API_KEY=your_virustotal_key_here
+    ABUSEIPDB_API_KEY=your_abuseipdb_key_here
+   
+3. Install dependencies:
+   pip install requests python-dotenv
+     
+4. Add your IOCs to `iocs.csv` and run:
 ```bash
 python3 main.py
 ```
-3. Results are printed to terminal and exported to `results.csv`
+5. Results are printed to terminal and exported to `results.csv`
 
 ## Example Output
 IOC:  8.8.8.8
