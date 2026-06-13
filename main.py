@@ -5,11 +5,17 @@ import time
 import csv
 from datetime import datetime
 import re
+import argparse
 import json
 
 load_dotenv()
 vt_key = os.getenv('VT_API_KEY') #Load VirusTotal API Key
 abuseipdb_key = os.getenv('ABUSEIPDB_API_KEY') #Load Abuseipdb key
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--input', default="iocs.csv", help="Input csv file")
+parser.add_argument('--output', default="results.csv", help="Output csv file")
+args = parser.parse_args()
 
 results = [] #Empty list to store results
 
@@ -33,7 +39,7 @@ def risk_score(malicious, abuse_confidence_score):
 
 
 def export(results):
-	with open('results.csv', 'w', newline='') as file: #Create csv 'results.csv'
+	with open(args.output, 'w', newline='') as file: #Create csv 'results.csv'
 		writer = csv.DictWriter(file, fieldnames=fieldnames, restval='N/A') #Write to file
 
 		# Write header row
@@ -208,7 +214,7 @@ def domain_api_call (test_domain):
 
 
 
-with open('iocs.csv', 'r', newline='') as file:  # Open IOCs csv to read from
+with open(args.input, 'r', newline='') as file:  # Open IOCs csv to read from
 		reader = csv.reader(file)
 		next(reader)  # Skip header row
 		for ip, hashes, domain in reader:
