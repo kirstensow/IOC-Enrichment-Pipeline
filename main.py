@@ -4,13 +4,24 @@ import requests
 import time
 import csv
 from datetime import datetime
+import re
 import json
-'''FINISH ADDING RISK SCORE FOR EACH FUNCTION AND FIX CREATION DATE'''
+
 load_dotenv()
 vt_key = os.getenv('VT_API_KEY') #Load VirusTotal API Key
 abuseipdb_key = os.getenv('ABUSEIPDB_API_KEY') #Load Abuseipdb key
 
 results = [] #Empty list to store results
+
+fieldnames = ['ioc', 'type', 'malicious', 'suspicious', 'total',
+              'abuse_score', 'country', 'owner', 'registrar',
+              'creation_date', 'last_dns_record', 'meaningful_name',
+              'type description', 'size', 'risk']
+
+def defang_cleaner(test_domain):
+	test_domain = re.sub(r'\[.\]', '.', test_domain)
+	test_domain = test_domain.replace('..', '.')  # Fix double dots
+	return test_domain
 
 def risk_score(malicious, abuse_confidence_score):
 	if abuse_confidence_score > 80 or malicious > 5:
@@ -23,14 +34,14 @@ def risk_score(malicious, abuse_confidence_score):
 
 def export(results):
 	with open('results.csv', 'w', newline='') as file: #Create csv 'results.csv'
-		writer = csv.writer(file) #Write to file
+		writer = csv.DictWriter(file, fieldnames=fieldnames, restval='N/A') #Write to file
 
 		# Write header row
-		writer.writerow(results[0].keys())
+		writer.writeheader()
 
 		# Write each result as a row
 		for row in results:
-			writer.writerow(row.values())
+			writer.writerow(row)
 
 def ip_api_call (test_ip):
 	# VirusTotal API call
@@ -82,25 +93,27 @@ def ip_api_call (test_ip):
 			country_code = abuse_data['data']['countryCode'] #Get country code
 			print('Country Code: ', country_code)
 
+
+
 		else:
 			print(f'AbuseOPDB lookup failed for {test_ip}: {abuse_response.status_code}') #Error handling, print status code if get request failed
 
-		risk = risk_score(malicious, abuse_confidence_score) #Pass data to risk score function
-		print(f'Risk Rating: {risk}') #Print risk score
 
+		risk = risk_score(malicious, abuse_confidence_score)  # Pass data to risk score function
+		print(f'Risk Rating: {risk}')  # Print risk score
 
 		results.append({ #Append to results list
-			'ioc': test_ip,
-			'type': 'IP',
-			'malicious': malicious,
-			'total': total_reports,
-			'abuse_score': abuse_confidence_score,
-			'country': country,
-			'owner': as_owner,
-			'risk': risk
-		})
+						'ioc': test_ip,
+						'type': 'IP',
+						'malicious': malicious,
+						'total': total_reports,
+						'abuse_score': abuse_confidence_score,
+						'country': country,
+						'owner': as_owner,
+						'risk': risk
+					})
 
-		time.sleep(15) #Lookup each IP 15 seconds apart
+
 
 
 
@@ -129,14 +142,15 @@ def hash_api_call (test_hash):
 			size = data['data']['attributes']['size']
 			print(f'Size: {size}')
 
+			risk = risk_score(malicious, 0)  # No AbuseIPDB so we pass 0
+			print(f'Risk: {risk}')
+
 			results.append({ 'ioc': test_hash,
 							 'type': 'Hash',
-							 'type description': type_description,
 							 'malicious': malicious,
-							 'suspicious': suspicious,
-							 'total': total,
 							 'meaningful_name': meaningful_name,
-							 'size': size})
+							 'size': size,
+						   'risk': risk})
 		else:
 			print(f'Hash lookup failed for {test_hash}: {response.status_code}')
 
@@ -165,22 +179,30 @@ def domain_api_call (test_domain):
 				registrar = data['data']['attributes'].get ('registrar', 'Unknown')
 				print(f'Registrar: {registrar}')
 
-				creation_date = data['data']['attributes'].get('creation_date', 'Unknown')
-				readable_creation_date = datetime.fromtimestamp(int(creation_date)).strftime('%Y-%m-%d')
+				creation_date = data['data']['attributes'].get('creation_date')
+				if creation_date:
+					readable_creation_date = datetime.fromtimestamp(int(creation_date)).strftime('%Y-%m-%d')
+				else:
+					readable_creation_date = 'Unknown'
 				print(f'Creation Date: {readable_creation_date}')
 
-				last_dns_record = data['data']['attributes'].get('last_update_date', 'Unknown')
-				readable_date = datetime.fromtimestamp(int(last_dns_record)).strftime('%Y-%m-%d')
+				last_dns_record = data['data']['attributes'].get('last_update_date')
+				if last_dns_record:
+					readable_date = datetime.fromtimestamp(int(last_dns_record)).strftime('%Y-%m-%d')
+				else:
+					readable_date = 'Unknown'
 				print(f'Last Modification Date: {readable_date}')
+
+				risk = risk_score(malicious,0) #No AbuseIPDB so we pass 0
+				print(f'Risk: {risk}')
 
 				results.append({ 'ioc': test_domain,
 								 'type': 'Domain',
 								 'malicious': malicious,
-								 'suspicious': suspicious,
-								 'total': total,
 								 'registrar': registrar,
 								 'creation_date': readable_date,
-								'last_dns_record': last_dns_record})
+								'last_dns_record': last_dns_record,
+							   	'risk': risk })
 			else:
 				print(f'Domain lookup failed for {test_domain}: {response.status_code}')
 
@@ -193,13 +215,14 @@ with open('iocs.csv', 'r', newline='') as file:  # Open IOCs csv to read from
 			test_ip = ip
 
 			test_hash = hashes
-
 			test_domain = domain
-			
+			test_domain = defang_cleaner(test_domain)
+
 			ip_api_call (test_ip)
 			hash_api_call (test_hash)
 			domain_api_call (test_domain)
 
+			time.sleep(15)  # Lookup  15 seconds apart
 
 
 
