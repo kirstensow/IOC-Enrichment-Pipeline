@@ -16,6 +16,14 @@ Enriched results are exported to a CSV file.
 
 
 ## How to Use
+Run with default files (iocs.csv and results.csv):
+python3 main.py
+
+Or specify custom input/output files:
+python3 main.py --input my_iocs.csv --output my_results.csv
+
+For help:
+python3 main.py --help
 
 ## Setup
 1. Sign up for free API keys:
